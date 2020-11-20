@@ -1,21 +1,35 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.IO;
 using UnityEngine;
 using UnityEditor;
-using System; 
-[System.Serializable]
+using System;
+public class Lsystem { 
+    public Lsystem(ref string s, Dictionary<char, string> rule, char axiom, int appendmentChance) {
+        StringBuilder sb = new StringBuilder();
+        if (appendmentChance != 0 & s != axiom.ToString()) {
+            foreach (char c in s) {
+                if (rule.ContainsKey(c)) {
+                    if (UnityEngine.Random.Range(0, 100) > appendmentChance) {
+                        sb.Append(rule[c]);
+                    }
+                } else {
+                    sb.Append(c.ToString());
+                }
+            }
+        } else {
+            foreach (char c in s) {
+                sb.Append(rule.ContainsKey(c) ? rule[c] : c.ToString());
+            }
+        }
+        s = sb.ToString();
+    } 
+}
 public class PlantGen : MonoBehaviour {
-    //dol system
-    //leaf
-    //fenestration
-    //leaf colours
-    //fix leaf positions
-    //rule switching
-    //joints
-    //fix up variable uses
-    
-    [HideInInspector] public bool pillarGeneration = true; 
+    #region varibles
+    //Pillar
+    [HideInInspector] public bool pillarGeneration = true;
     [HideInInspector] [Range(1, 4)] public int pillarHeight = 3;
 
     //colour settings
@@ -24,6 +38,7 @@ public class PlantGen : MonoBehaviour {
     [HideInInspector] public bool FlipColour = false;
     [HideInInspector] public bool SolidColour = true;
 
+    //Display
     [HideInInspector] public bool rotate = true;
     [HideInInspector] public int RotationAngle = 90;
 
@@ -32,20 +47,20 @@ public class PlantGen : MonoBehaviour {
     [SerializeField] private bool rotateLocal = true;
 
     [Header("Branch Generation Settings")]
-    [SerializeField] [Range(0,2.0f)] private float branchLength = 10.0f; private float _branchLength;
-    [SerializeField] [Range(1,15)]private float banchThicknessDivider = 8;
+    [SerializeField] [Range(0, 2.0f)] private float branchLength = 10.0f; private float _branchLength;
+    [SerializeField] [Range(1, 15)] private float branchThickness = 8;
     [SerializeField] [Range(0, 15)] private float branchLengthDivider = 8;
-    [SerializeField] [Range(1, 5)] private int generationHeight = 5; 
-    [SerializeField] [Range(1,2)] private float branchMultiplier = 1.0f; private float _branchMultiplier; 
+    [SerializeField] [Range(1, 5)] private int generationHeight = 5;
+    [SerializeField] [Range(1, 2)] private float branchMultiplier = 1.0f; private float _branchMultiplier;
     [SerializeField] [Range(0, 1)] private float lengthVariance = 0.10f;
     [SerializeField] [Range(0, 100)] private int BranchingChance = 50;
     [SerializeField] [Range(0f, 1f)] private float RandomMultiplier = 0.1f;
     private enum Shape { PrimitiveCube, PrimitiveCylinder }
     [SerializeField] private Shape shape = Shape.PrimitiveCube;
 
-    [Header("Material")] 
+    [Header("Material")]
     [SerializeField] [Range(0.03f, 1)] float MaterialShinyness = 0.078125f;
-    [SerializeField] [Range(0f,1f)] float  MaterialEmision = 1;
+    [SerializeField] [Range(0f, 1f)] float MaterialEmision = 1;
 
     //rules
     [SerializeField] public char axiom = 'F';
@@ -62,14 +77,86 @@ public class PlantGen : MonoBehaviour {
 
     //transform 
     [HideInInspector] public bool Validate = false;
-    private Stack<TransformInfo> transformStack; 
-    private Vector3 Origin; 
+    private Stack<TransformInfo> transformStack;
+    private Vector3 Origin;
     GameObject TreeDrawer;
 
     //Leaf generation
-    int positionOff;
+    List<Leaf> leaves = new List<Leaf>();
+    [SerializeField] private bool MakeLeaves = false;
 
-    //General
+    #endregion
+    #region file data
+    private string ExportIntString(params int[] input) {
+        string output = "";
+        foreach (int item in input) 
+            output += item.ToString() + ","; 
+        return output;
+    }
+    private string ExportFloatString(params float[] input) {
+        string output = "";
+        foreach (float item in input) 
+            output += item.ToString() + ","; 
+        return output;
+    }
+    private string ExportBoolString(params bool[] input) {
+        string output = "";
+        foreach (bool item in input)
+            output += item.ToString() + ",";
+        return output;
+    }
+    private string ExportStringString(params string[] input) {
+        string output = "";
+        foreach (string item in input)
+            output += item.ToString() + ",";
+        return output;
+    }  
+    public string ExportVariablesString(string path = "Assets/Resources/VariableExport.txt") {
+            //colorus, shape, char
+            string output = ExportIntString(pillarHeight, RotationAngle, generationHeight, BranchingChance) + ";" + 
+            ExportFloatString(angle, branchLength, branchThickness, branchLengthDivider, branchMultiplier, lengthVariance, RandomMultiplier, MaterialShinyness, MaterialEmision) + ";" + 
+            ExportBoolString(pillarGeneration, FlipColour, SolidColour, rotate, rotateLocal) + ";" + 
+            ExportStringString(dictionaryString);
+        Debug.Log(output); 
+
+        //Write some text to the test.txt file
+        StreamWriter writer = new StreamWriter(path, true);
+        writer.WriteLine(ExportIntString(pillarHeight, RotationAngle, generationHeight, BranchingChance));
+        writer.WriteLine(ExportFloatString(angle, branchLength, branchThickness, branchLengthDivider, branchMultiplier, lengthVariance, RandomMultiplier, MaterialShinyness, MaterialEmision));
+        writer.WriteLine(ExportBoolString(pillarGeneration, FlipColour, SolidColour, rotate, rotateLocal));
+        writer.WriteLine(ExportStringString(dictionaryString));
+        writer.Close();
+
+        //Re-import the file to update the reference in the editor
+        AssetDatabase.ImportAsset(path);
+        //TextAsset asset = Resources.Load("test");
+
+        return output;
+    }
+    public void ImportVariablesSstring() {
+        string path = "Assets/Resources/VariableExport.txt"; 
+        //Read the text from directly from the test.txt file
+        StreamReader reader = new StreamReader(path);
+        int linecount = 0;
+        
+        for (string line = reader.ReadLine(); line != null; line = reader.ReadLine()) {
+            string v = "";
+            int wordcount = 0;
+            foreach (char c in line) {
+                if (c != ',') {
+                    v += c.ToString();
+                } else {
+                    Debug.Log(v);
+                    v = "";
+                    wordcount++;
+                }
+            }
+            linecount++;
+        }
+        reader.Close();
+    }
+    #endregion
+    #region general
     private void OnDrawGizmos() {
         Gizmos.color = Color.red;
         DrawCube(gameObject.transform.position, gameObject.transform.rotation, gameObject.transform.localScale);
@@ -103,6 +190,7 @@ public class PlantGen : MonoBehaviour {
         Origin = transform.position;
     } 
     public void Rotation() { transform.eulerAngles = new Vector3(transform.eulerAngles.x, 0 + RotationAngle, transform.eulerAngles.z); }
+    #endregion
     private void Make(){
         rules = new Dictionary<char, string> { { axiom, dictionaryString } };
 
@@ -127,19 +215,22 @@ public class PlantGen : MonoBehaviour {
 
         if (pillarGeneration) {
             //perform the numbers of generation in a pillar
-            for (int i = 0; i < generationHeight; i++) 
-                Append(ref currentString, rules); 
+            for (int i = 0; i < generationHeight; i++)
+                new Lsystem(ref currentString, rules, axiom, BranchingChance); 
             //add this pillar for the height
             for (int i = 0; i < pillarHeight; i++) 
                 currentString += currentString; 
             Gen();
         } else { 
-            for (int i = 0; i < generationHeight; i++) 
-                Append(ref currentString, rules); 
+            for (int i = 0; i < generationHeight; i++)
+                new Lsystem(ref currentString, rules, axiom, BranchingChance); 
             Gen();
         }
         CombineMeshes();
-        GenerateLeaves();
+        foreach (Leaf item in leaves)
+        {
+
+        }
     }
     private void Update(){
         if (Validate){
@@ -150,20 +241,6 @@ public class PlantGen : MonoBehaviour {
             transform.Rotate(Vector3.forward * (Time.deltaTime * 20f)); 
     } 
     //Branch
-    private void Append(ref string s,  Dictionary<char, string> rule){
-        StringBuilder sb = new StringBuilder();
-        if (BranchingChance != 0 & s != axiom.ToString()){
-            foreach (char c in s){
-                if (rule.ContainsKey(c)){
-                    if (UnityEngine.Random.Range(0,100) > BranchingChance){
-                        sb.Append(rule[c]);}                    
-                } else {
-                    sb.Append(c.ToString());} }
-        }else{
-            foreach (char c in s){
-                sb.Append(rules.ContainsKey(c) ? rule[c] : c.ToString());}}
-        s = sb.ToString();
-    }
     private Vector3 Move(Vector3 direction, float length){
         TreeDrawer.transform.Translate(Vector3.forward * (length + (UnityEngine.Random.Range(0, lengthVariance * 100f) / 100f)));
         return TreeDrawer.transform.position;
@@ -225,7 +302,8 @@ public class PlantGen : MonoBehaviour {
                 case '>': TreeDrawer.transform.Rotate(Vector3.forward * -angle); break; //roll 
                 case '[': 
                     transformStack.Push(new TransformInfo(current.transform, _branchLength, current.mesh));
-                    GenerateLeaf(highestLeaf);
+                    if (MakeLeaves) 
+                        CreateLeaf(highestLeaf);
                     break; 
                 case ']': 
                     highestLeaf = current;
@@ -249,11 +327,11 @@ public class PlantGen : MonoBehaviour {
         float thicknessMultiplier = (float)(UnityEngine.Random.Range(0f, 5f) * (float)RandomMultiplier) / 50f;
 
         if (shape == Shape.PrimitiveCube) { 
-            gm.GetComponent<MeshFilter>().mesh = PrimitiveCube();
-            gm.transform.localScale = new Vector3((length) / banchThicknessDivider + thicknessMultiplier, (between.magnitude) * 1f, (length) / banchThicknessDivider + thicknessMultiplier);
+            gm.GetComponent<MeshFilter>().mesh = PrimitiveShape(PrimitiveType.Cube);
+            gm.transform.localScale = new Vector3((length) / branchThickness + thicknessMultiplier, (between.magnitude) * 1f, (length) / branchThickness + thicknessMultiplier);
         } else {
-            gm.GetComponent<MeshFilter>().mesh = PrimitiveCylinder();
-            gm.transform.localScale = new Vector3((length) / banchThicknessDivider + thicknessMultiplier, (between.magnitude) * 0.5f, (length) / banchThicknessDivider + thicknessMultiplier);
+            gm.GetComponent<MeshFilter>().mesh = PrimitiveShape(PrimitiveType.Cylinder);
+            gm.transform.localScale = new Vector3((length) / branchThickness + thicknessMultiplier, (between.magnitude) * 0.5f, (length) / branchThickness + thicknessMultiplier);
         }
 
         if (FlipColour) gm.GetComponent<MeshRenderer>().material.color = ColourMaterial(Col2, Col1);
@@ -288,39 +366,23 @@ public class PlantGen : MonoBehaviour {
     private void SetTransform(ref GameObject a, TransformInfo b) {
         a.transform.position = b.transform.position;
         a.transform.rotation = b.transform.rotation;
-    } 
-    public Mesh PrimitiveCylinder() {
-        GameObject gm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Mesh m = gm.GetComponent<MeshFilter>().mesh; 
-        Destroy(gm);
-        return m;
     }
-    public Mesh PrimitiveCube() {
-        GameObject gm = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Mesh m = gm.GetComponent<MeshFilter>().mesh;
-        Destroy(gm);
-        return m;
-    }
-    public Mesh PrimitiveSphere() {
-        GameObject gm = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+    public Mesh PrimitiveShape(PrimitiveType type) {
+        GameObject gm = GameObject.CreatePrimitive(type);
         Mesh m = gm.GetComponent<MeshFilter>().mesh;
         Destroy(gm);
         return m;
     } 
     GameObject DrawSphere(Vector3 pos, float size, Color c) {
         GameObject g = new GameObject("Giz " + c, typeof(MeshRenderer), typeof(MeshFilter));
-        g.AddComponent<MeshFilter>().mesh = PrimitiveSphere();
+        g.AddComponent<MeshFilter>().mesh = PrimitiveShape(PrimitiveType.Sphere);
         g.GetComponent<MeshRenderer>().material.color = c;
         g.transform.position = pos;
         g.transform.localScale = new Vector3(size, size, size);
         return g;
     } 
     //Leaf  
-    private void GenerateLeaf(TransformInfo ti) {
-        new Leaf(ti, ref texture, transform.position, ref a_Leaves);
-    }
-   
-    private void GenerateLeaves() { 
-    }
-  
+    private void CreateLeaf(TransformInfo ti) {
+        leaves.Add(new Leaf(ti, ref texture, transform.position, ref a_Leaves));
+    }  
 }

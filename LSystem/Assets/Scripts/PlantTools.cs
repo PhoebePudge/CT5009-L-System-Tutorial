@@ -23,28 +23,35 @@ public class PlantTools {
 [CustomEditor(typeof(PlantGen))] public class PlantUI : Editor {
     PlantGen myScript;
     int _choiceIndex = 0; 
-    int _prevRotation = 0; 
+    int _prevRotation = 0;
+    Material mat;
+    MaterialEditor _materialEditor;
     string[] _choices = new[] { "F+[+F-F-F]-[--F+F+F]", "+<BF+<BFB{F+>>BFB-F}>>BFB{F>B{>", "FF-[-F+F+F]+[+F-F-F]", "F+F--F+F", "Custom String"};
     void OnEnable() { 
         myScript = (PlantGen)target;
-        //mat = myScript.gameObject.GetComponentInChildren<MeshRenderer>().material;
-        //if (mat != null) 
-        //    _materialEditor = (MaterialEditor)CreateEditor(mat); 
     }
     public override void OnInspectorGUI() {
         EditorGUI.BeginChangeCheck();
 
-        // Draw the material field of MyScript
-        //EditorGUILayout.PropertyField(serializedObject.FindProperty("material"));
+        #region mat
+        //if (myScript.gameObject.transform.childCount != 0) {
+        //    mat = myScript.gameObject.GetComponentInChildren<MeshRenderer>().material;
+        //}
+        //if (mat != null)
+        //    _materialEditor = (MaterialEditor)CreateEditor(mat);
+
+
+        //// Draw the material field of MyScript
+        ////EditorGUILayout.PropertyField(serializedObject.FindProperty("material"));
 
         //if (EditorGUI.EndChangeCheck()) {
         //    serializedObject.ApplyModifiedProperties();
-//
+
         //    if (_materialEditor != null) { 
         //        DestroyImmediate(_materialEditor);
         //    }
-    //
-        //    if (myScript.gameObject.GetComponent<MeshRenderer>().material != null) { 
+        //    if (myScript.gameObject.transform.childCount != 0) {
+        //        if (myScript.gameObject.GetComponentInChildren<MeshRenderer>().material != null) 
         //        _materialEditor = (MaterialEditor)CreateEditor(mat); 
         //    }
         //}
@@ -52,30 +59,40 @@ public class PlantTools {
 
         //if (_materialEditor != null) {
         //    // Draw the material's foldout and the material shader field
-            // Required to call _materialEditor.OnInspectorGUI ();
-         //   _materialEditor.DrawHeader(); 
-            //  We need to prevent the user to edit Unity default materials
-      //      bool isDefaultMaterial = !AssetDatabase.GetAssetPath(mat).StartsWith("Assets");
+        //    // Required to call _materialEditor.OnInspectorGUI ();
+        //    _materialEditor.DrawHeader(); 
+        //    //  We need to prevent the user to edit Unity default materials
+        //    bool isDefaultMaterial = !AssetDatabase.GetAssetPath(mat).StartsWith("Assets");
 
-     //       using (new EditorGUI.DisabledGroupScope(isDefaultMaterial)) {
+        //    using (new EditorGUI.DisabledGroupScope(isDefaultMaterial)) {
 
-                // Draw the material properties
-    //            // Works only if the foldout of _materialEditor.DrawHeader () is open
-   //             _materialEditor.OnInspectorGUI();
-    //        }
-   //     }
+        //        // Draw the material properties
+        //        // Works only if the foldout of _materialEditor.DrawHeader () is open
+        //        _materialEditor.OnInspectorGUI();
+        //    }
+        //}
 
-
+        #endregion
 
         //Button Obj
         if (GUILayout.Button("Export OBJ to file"))
             Validate(myScript);
         //Button Save
-        if (GUILayout.Button("Save Settings to file"))
-            Validate(myScript);
+        if (GUILayout.Button("Save Settings to file")) {
+            if (System.IO.File.Exists("Assets/Resources/VariableExport.txt")) {
+                if (EditorUtility.DisplayDialog("File Exists", "Do you want to overwrite the file", "Create", "Cancel")) {
+                    myScript.ExportVariablesString("Assets/Resources/VariableExport.txt");
+                    Validate(myScript);
+                } 
+            }
+
+        }
         //Button Load
         if (GUILayout.Button("Load Settings from file"))
+        {
+            myScript.ImportVariablesSstring();
             Validate(myScript);
+        }
 
         //Button choice
         _choiceIndex = EditorGUILayout.Popup(_choiceIndex, _choices);
@@ -97,22 +114,16 @@ public class PlantTools {
             myScript.FlipColour = !myScript.FlipColour;
 
         //Solid Colour
-        if (myScript.SolidColour)
-        {
+        if (myScript.SolidColour) {
             if (myScript.FlipColour)
                 myScript.Col2 = EditorGUILayout.ColorField("Col2", myScript.Col2);
             else
                 myScript.Col1 = EditorGUILayout.ColorField("Col1", myScript.Col1);
-        }
-        else
-        {
-            if (myScript.FlipColour)
-            {
+        } else {
+            if (myScript.FlipColour) {
                 myScript.Col2 = EditorGUILayout.ColorField("Col2", myScript.Col2);
                 myScript.Col1 = EditorGUILayout.ColorField("Col1", myScript.Col1);
-            }
-            else
-            {
+            } else {
                 myScript.Col1 = EditorGUILayout.ColorField("Col1", myScript.Col1);
                 myScript.Col2 = EditorGUILayout.ColorField("Col2", myScript.Col2);
             }
@@ -122,8 +133,7 @@ public class PlantTools {
         myScript.rotate = EditorGUILayout.Toggle("rotate", myScript.rotate);
 
         //rotation
-        if (!myScript.rotate)
-        {
+        if (!myScript.rotate) {
             EditorGUILayout.LabelField("Rotation Angle");
             myScript.RotationAngle = EditorGUILayout.IntSlider(myScript.RotationAngle, 0, 360);
         }
@@ -131,21 +141,17 @@ public class PlantTools {
         if (GUILayout.Button("Recalculate"))
             Validate(myScript);
         //Validate
-        if (GUI.changed)
-        {
-            myScript.Rotation();
-        }
+        if (GUI.changed) 
+            myScript.Rotation(); 
         _prevRotation = myScript.RotationAngle; 
     }
     private void Validate(PlantGen myScript) { 
         if (Application.isPlaying & myScript.Validation()) { myScript.Validate = true; }
     }
-    void OnDisable()
-    {
-        //if (_materialEditor != null)
-        //{
+    void OnDisable() {
+        if (_materialEditor != null) {
             // Free the memory used by default MaterialEditor
-        //    DestroyImmediate(_materialEditor);
-        //}
+            DestroyImmediate(_materialEditor);
+        }
     }
 } 
