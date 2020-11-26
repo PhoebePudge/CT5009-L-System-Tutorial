@@ -14,7 +14,7 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 9
-  m_Fog: 1
+  m_Fog: 0
   m_FogColor: {r: 0.023529414, g: 0.34117648, b: 0.50980395, a: 0.5176471}
   m_FogMode: 2
   m_FogDensity: 0.02
@@ -264,7 +264,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 35
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -313,7 +313,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 4294967295
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!154 &1105671512
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -411,21 +411,43 @@ MonoBehaviour:
   RotationAngle: 90
   angle: 25
   rotateLocal: 1
-  branchLength: 0.3
-  branchThickness: 8
+  branchLength: 0.51
+  branchThickness: 2.5
   branchLengthDivider: 8
   generationHeight: 2
   branchMultiplier: 1
-  lengthVariance: 0.1
+  lengthVariance: 0
   BranchingChance: 0
-  RandomMultiplier: 0.1
+  RandomMultiplier: 0
   shape: 1
   MaterialShinyness: 1
   MaterialEmision: 0
-  axiom: 70
-  dictionaryString: F+[+F-F-F]-[--F+F+F]
+  axiom: 4c005200000000000000000000000000000000000000000000000000000000000000000000000000
+  doubleAxomAmmendment: 1
+  dictionaryString:
+  - F+[+F-F-F]-[--F+F+F]
+  - F+[+F-F-F]-[--F+F+F]
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
   Validate: 0
   MakeLeaves: 0
+  MeshLeaves: 0
 --- !u!4 &1394220290
 Transform:
   m_ObjectHideFlags: 0

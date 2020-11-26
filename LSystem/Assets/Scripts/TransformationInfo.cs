@@ -13,6 +13,10 @@ public class TransformInfo {
         branchLength = 0; 
         mesh = new Mesh();
     }
+    public void SetTransform(ref GameObject a) {
+        a.transform.position = transform.position;
+        a.transform.rotation = transform.rotation;
+    }
     public TransformHolder transform;
     public float branchLength;
     public Mesh mesh;

@@ -7,7 +7,8 @@
         _MainTex("Base (RGB) Gloss (A)", 2D) = "white" {}
 
         _NormalMap("Normal map", 2D) = "bump" {}
-        _NormalScale("Normal Scale", Range(0, 1)) = 1
+        _NormalScale("Normal Scale", Range(0.5, 1.5)) = 1
+        [MaterialToggle] _CellShading("Cell Shading", float) = 1
     }
     
         SubShader{
@@ -23,6 +24,9 @@
         float _Emission;
         half _Shininess;
         float _Amount;
+        float _NormalScale;
+        float _CellShading;
+
 
         struct Input {
             float2 uv_MainTex;
@@ -32,20 +36,22 @@
         }; 
         void surf(Input IN, inout SurfaceOutput o) {
             fixed4 tex = tex2D(_MainTex, IN.uv_MainTex);
-             
-            o.Albedo = tex.rgb * _Color.rgb * IN.color.rgb;
+            if (_CellShading) {
 
-            o.Gloss = tex.a;
-
-            o.Alpha = tex.a * _Color.a;
-
-            o.Specular = _Shininess;
-
-            o.Normal = UnpackNormal(tex2D(_NormalMap, IN.uv_NormalMap));
-
-            o.Emission = (tex.rgb * _Color.rgb * IN.color.rgb) * _Emission;
-
-			//o.Albedo = float3(1.0, 0, 0);
+                o.Albedo = tex.rgb * _Color.rgb * IN.color.rgb;
+                o.Gloss = tex.a;
+                o.Alpha = tex.a * _Color.a;
+                o.Specular = _Shininess;
+                o.Normal = (UnpackNormal(tex2D(_NormalMap, IN.uv_NormalMap)* _NormalScale));
+                o.Emission = (tex.rgb * _Color.rgb * IN.color.rgb) * _Emission;
+            } else {
+                o.Albedo = tex.rgb * _Color.rgb * IN.color.rgb;
+                o.Gloss = tex.a;
+                o.Alpha = tex.a * _Color.a;
+                o.Specular = _Shininess;
+                o.Normal = (UnpackNormal(tex2D(_NormalMap, IN.uv_NormalMap)* _NormalScale));
+                o.Emission = (tex.rgb * _Color.rgb * IN.color.rgb) * _Emission;
+            }
         }
         ENDCG
     }

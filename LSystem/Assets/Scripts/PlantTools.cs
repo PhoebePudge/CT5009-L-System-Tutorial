@@ -1,10 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor; 
-
-public class PlantTools {
- 
+using UnityEditor;
+using System;
+using System.Reflection;
+public class PlantTools{ 
     [MenuItem("GameObject/CreatePlant")] private static void CreatePlant() {
         if (EditorUtility.DisplayDialog("Plant Generator", "Do you want to create a plant?", "Create", "Cancel")) {
             int Index = 1;
@@ -15,104 +15,103 @@ public class PlantTools {
             GameObject gm = new GameObject("Plant " + Index);
             gm.AddComponent<PlantGen>();
         }
-    } 
-    [MenuItem("GameObject/LoadPlantFromFile")] private static void ImportPlantFromString() {
-
-    }
+    }  
 } 
 [CustomEditor(typeof(PlantGen))] public class PlantUI : Editor {
-    PlantGen myScript;
-    int _choiceIndex = 0; 
-    int _prevRotation = 0;
-    Material mat;
-    MaterialEditor _materialEditor;
-    string[] _choices = new[] { "F+[+F-F-F]-[--F+F+F]", "+<BF+<BFB{F+>>BFB-F}>>BFB{F>B{>", "FF-[-F+F+F]+[+F-F-F]", "F+F--F+F", "Custom String"};
-    void OnEnable() { 
-        myScript = (PlantGen)target;
+    static PlantGen myScript;
+    int[] _choiceIndex = new int[2] { 0 , 0}; 
+    int _prevRotation = 0; 
+    string[] _choices = new[] { 
+        "F+[+F-F-F]-[--F+F+F]", 
+        "+<BF+<BFB{F+>>BFB-F}>>BFB{F>B{>", //should make a hillbert cube
+        "FF-[-F+F+F]+[+F-F-F]", 
+        "F+F--F+F",
+        "+RF-LFL-FR+",
+        "-LF+RFR+FL-", 
+        "Custom String"}; // custom
+    void OnEnable() {
+        if (myScript == null) {
+            myScript = (PlantGen)target;
+        }
+        _choiceIndex = myScript.EditorVariables._choiceIndex;
+        _prevRotation = myScript.EditorVariables._prevRotation;
+
+        if (_choiceIndex == null) {
+            _choiceIndex = new int[2] { 0, 0 };
+            _prevRotation = 0;
+        }
     }
-    public override void OnInspectorGUI() {
+    private void OnDisable() {
+        myScript.EditorVariables._choiceIndex = _choiceIndex;
+        myScript.EditorVariables._prevRotation = _prevRotation;
+    }
+    public override void OnInspectorGUI() { 
         EditorGUI.BeginChangeCheck();
-
-        #region mat
-        //if (myScript.gameObject.transform.childCount != 0) {
-        //    mat = myScript.gameObject.GetComponentInChildren<MeshRenderer>().material;
-        //}
-        //if (mat != null)
-        //    _materialEditor = (MaterialEditor)CreateEditor(mat);
-
-
-        //// Draw the material field of MyScript
-        ////EditorGUILayout.PropertyField(serializedObject.FindProperty("material"));
-
-        //if (EditorGUI.EndChangeCheck()) {
-        //    serializedObject.ApplyModifiedProperties();
-
-        //    if (_materialEditor != null) { 
-        //        DestroyImmediate(_materialEditor);
-        //    }
-        //    if (myScript.gameObject.transform.childCount != 0) {
-        //        if (myScript.gameObject.GetComponentInChildren<MeshRenderer>().material != null) 
-        //        _materialEditor = (MaterialEditor)CreateEditor(mat); 
-        //    }
-        //}
-
-
-        //if (_materialEditor != null) {
-        //    // Draw the material's foldout and the material shader field
-        //    // Required to call _materialEditor.OnInspectorGUI ();
-        //    _materialEditor.DrawHeader(); 
-        //    //  We need to prevent the user to edit Unity default materials
-        //    bool isDefaultMaterial = !AssetDatabase.GetAssetPath(mat).StartsWith("Assets");
-
-        //    using (new EditorGUI.DisabledGroupScope(isDefaultMaterial)) {
-
-        //        // Draw the material properties
-        //        // Works only if the foldout of _materialEditor.DrawHeader () is open
-        //        _materialEditor.OnInspectorGUI();
-        //    }
-        //}
-
+        
+        #region Prefab Loading
+        string path = "Assets/Resources/Prefabs/";  
+        string fileExstension = "prefab";
+        //Button save
+        if (GUILayout.Button("Save to prefab")) {
+            string filepath = EditorUtility.SaveFilePanel("Select location to save Prefab", path, "", fileExstension); 
+            if (filepath.Length != 0) { 
+                myScript.SaveToPrefab(filepath); 
+            } 
+            Validate(myScript);
+        }
+        //Button load
+        if (GUILayout.Button("Load from prefab")) {
+            string filepath = EditorUtility.OpenFilePanel("Select Prefab to Open", path, fileExstension);
+            if (filepath.Length != 0) {
+                GameObject gm = Instantiate<GameObject>(PrefabUtility.LoadPrefabContents(filepath));
+                Debug.Log("Asset was found and loaded!");
+                gm.transform.rotation = myScript.gameObject.transform.rotation;
+                gm.name = myScript.gameObject.name;
+                myScript.gameObject.AddComponent<Destroy>();
+            } else {
+                Debug.LogError("Failed loading prefab contents");
+            } 
+            Validate(myScript); 
+        }
         #endregion
 
-        //Button Obj
-        if (GUILayout.Button("Export OBJ to file"))
-            Validate(myScript);
-        //Button Save
-        if (GUILayout.Button("Save Settings to file")) {
-            if (System.IO.File.Exists("Assets/Resources/VariableExport.txt")) {
-                if (EditorUtility.DisplayDialog("File Exists", "Do you want to overwrite the file", "Create", "Cancel")) {
-                    myScript.ExportVariablesString("Assets/Resources/VariableExport.txt");
-                    Validate(myScript);
-                } 
-            }
-
-        }
-        //Button Load
-        if (GUILayout.Button("Load Settings from file"))
-        {
-            myScript.ImportVariablesSstring();
-            Validate(myScript);
-        }
-
-        //Button choice
-        _choiceIndex = EditorGUILayout.Popup(_choiceIndex, _choices);
-        if (_choiceIndex == 4)
-            myScript.dictionaryString = EditorGUILayout.TextField("Custom Dictionary String", myScript.dictionaryString);
+        #region Dictionary String 
+        //1
+        myScript.doubleAxomAmmendment = EditorGUILayout.Toggle("Use two Axioms", myScript.doubleAxomAmmendment);
+        _choiceIndex[0] = EditorGUILayout.Popup(_choiceIndex[0], _choices);
+        if (_choiceIndex[0] == _choices.Length - 1)
+            myScript.dictionaryString[0] = EditorGUILayout.TextField("Custom Dictionary String", myScript.dictionaryString[0]);
         else
-            myScript.dictionaryString = _choices[_choiceIndex];
+            myScript.dictionaryString[0] = _choices[_choiceIndex[0]];
+        //2
+        if (myScript.doubleAxomAmmendment) {
+            _choiceIndex[1] = EditorGUILayout.Popup(_choiceIndex[1], _choices);
+            if (_choiceIndex[1] == _choices.Length - 1)
+                myScript.dictionaryString[1] = EditorGUILayout.TextField("Custom Dictionary String", myScript.dictionaryString[1]);
+            else
+                myScript.dictionaryString[1] = _choices[_choiceIndex[1]];
+        }
+        #endregion
 
-        //Toggle Pillar
+        #region Axoim
+        myScript.axiom[0] = EditorGUILayout.TextField("Axiom 1", myScript.axiom[0].ToString()).ToCharArray()[0];
+        if (myScript.doubleAxomAmmendment) 
+        myScript.axiom[1] = EditorGUILayout.TextField("Axiom 1", myScript.axiom[1].ToString()).ToCharArray()[0];
+        #endregion
+
+        #region Pillar Generation
         EditorGUILayout.LabelField("Pillar", EditorStyles.boldLabel);
         myScript.pillarGeneration = EditorGUILayout.Toggle("pillarGeneration", myScript.pillarGeneration);
         if (myScript.pillarGeneration)
             myScript.pillarHeight = EditorGUILayout.IntSlider("pillarHeight", myScript.pillarHeight, 1, 5);
+        #endregion
 
+        #region Colour
         //Toggle solid and flip
         EditorGUILayout.LabelField("Colour", EditorStyles.boldLabel);
         myScript.SolidColour = EditorGUILayout.Toggle("SolidColour", myScript.SolidColour);
         if (GUILayout.Button("FlipColour"))
-            myScript.FlipColour = !myScript.FlipColour;
-
+            myScript.FlipColour = !myScript.FlipColour; 
         //Solid Colour
         if (myScript.SolidColour) {
             if (myScript.FlipColour)
@@ -128,6 +127,9 @@ public class PlantTools {
                 myScript.Col2 = EditorGUILayout.ColorField("Col2", myScript.Col2);
             }
         }
+        #endregion
+
+        #region Rotation
         //Display rotate toggle
         EditorGUILayout.LabelField("Rotation", EditorStyles.boldLabel);
         myScript.rotate = EditorGUILayout.Toggle("rotate", myScript.rotate);
@@ -137,6 +139,8 @@ public class PlantTools {
             EditorGUILayout.LabelField("Rotation Angle");
             myScript.RotationAngle = EditorGUILayout.IntSlider(myScript.RotationAngle, 0, 360);
         }
+        #endregion
+
         DrawDefaultInspector();
         if (GUILayout.Button("Recalculate"))
             Validate(myScript);
@@ -145,13 +149,8 @@ public class PlantTools {
             myScript.Rotation(); 
         _prevRotation = myScript.RotationAngle; 
     }
+
     private void Validate(PlantGen myScript) { 
         if (Application.isPlaying & myScript.Validation()) { myScript.Validate = true; }
-    }
-    void OnDisable() {
-        if (_materialEditor != null) {
-            // Free the memory used by default MaterialEditor
-            DestroyImmediate(_materialEditor);
-        }
-    }
+    } 
 } 
